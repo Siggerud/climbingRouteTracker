@@ -1,0 +1,10 @@
+country_Section:,Norway
+crag_Section:,Båsmoklippa
+Lumiére,Boulder
+Lefou,Boulder
+crag_Section:,Hauktjern
+Sara,Traditional
+country_Section:,Sweded
+crag_Section:,Hauktjern
+Bris,Sport
+

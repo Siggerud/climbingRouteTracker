@@ -1,10 +1,10 @@
 from tkinter import Tk, ttk, StringVar, Checkbutton, Listbox, Variable, Frame, Label, \
-    Toplevel, Button
+    Toplevel, Button, IntVar
 from scraper import CragScraper
 from scrapeCleaner import ScrapeCleaner
+from savedRoutesManager import SavedRoutesManager
 
 # TODO: make sure the scraping only gets executed at the start of the program
-# initialize the scraper in the class
 
 class trackerGUI:
     def __init__(self, master):
@@ -13,7 +13,9 @@ class trackerGUI:
         self._master.title("Climbing routes tracker")
 
         self._cragInfo = []
+        self._ascendedRoutes = []
         self._scraper = CragScraper()
+        self._cleaner = ScrapeCleaner()
 
         self._continentVar = StringVar()
         self._continent = ttk.Combobox(self._master, textvariable=self._continentVar, width=10)
@@ -88,13 +90,16 @@ class trackerGUI:
         markButton = Button(self._cragGradeInfoFrame, text="Mark ascents", bg="springgreen", command=self._makePopup)
         markButton.grid(row=rowCount, column=0, sticky="w", columnspan=2)
 
+    #TODO: lag scrollbar
     def _makePopup(self):
         self._markAscendsWindow = Toplevel(self._master)
-        self._markAscendsWindow.geometry("200x200")
+        self._markAscendsWindow.geometry("300x500")
         self._markAscendsWindow.title("Mark ascents")
 
         url = self._getCragUrl()
-        cragRoutesInfo = self._scraper.getCragRoutesInfo(url)
+        cragRoutesInfoUnsorted = self._scraper.getCragRoutesInfo(url)
+
+        cragRoutesInfo = self._cleaner.sortCragRoutesInfo(cragRoutesInfoUnsorted)
 
         nameTitleLabel = Label(self._markAscendsWindow, text="Route")
         nameTitleLabel.grid(row=0, column=0, sticky="w")
@@ -108,16 +113,32 @@ class trackerGUI:
         starsTitleLabel = Label(self._markAscendsWindow, text="Stars")
         starsTitleLabel.grid(row=0, column=3, sticky="w")
 
+        country = self._countryVar.get()
+        index = self._resultList.curselection()
+        crag = self._resultList.get(index)
+        savedRoutesManager = SavedRoutesManager("ascendedRoutes.txt", country, crag)
+
+        self._ascendedRoutes = [] # reset list
         rowCount = 1
         for routeInfo in cragRoutesInfo:
-            nameLabel = Label(self._markAscendsWindow, text=routeInfo[0])
-            nameLabel.grid(row=rowCount, column=0, sticky="w")
-
             gradeLabel = Label(self._markAscendsWindow, text=routeInfo[1])
             gradeLabel.grid(row=rowCount, column=1, sticky="w")
 
-            styleLabel = Label(self._markAscendsWindow, text=routeInfo[2])
+            style = routeInfo[2]
+            styleLabel = Label(self._markAscendsWindow, text=style)
             styleLabel.grid(row=rowCount, column=2, sticky="w")
+
+            nameVar = IntVar()
+            name = routeInfo[0]
+            nameLabel = Checkbutton(self._markAscendsWindow, text=name, variable=nameVar, onvalue=1, offvalue=0)
+            nameLabel.grid(row=rowCount, column=0, sticky="w")
+            ascendedValue = savedRoutesManager.checkIfRouteAscended(name, style)
+
+            if ascendedValue == 1:
+                nameLabel.config(fg="green")
+                nameVar.set(ascendedValue)
+
+            self._ascendedRoutes.append([name, style, ascendedValue, nameVar])
 
             stars = str(routeInfo[3])
             if stars == "0.0":
@@ -131,11 +152,30 @@ class trackerGUI:
 
             rowCount += 1
 
-            # TODO: sort in order by grade in scrapeCleaner
+        submitAscends = Button(self._markAscendsWindow, text="Submit", bg="magenta", command=self._registerAscends)
+        submitAscends.grid(row=rowCount, column=1, sticky="w")
+
+    def _registerAscends(self):
+        country = self._countryVar.get()
+        index = self._resultList.curselection()
+        crag = self._resultList.get(index)
+        routeManager = SavedRoutesManager("ascendedRoutes.txt", country, crag)
+        alreadyClimbed = []
+        newlyClimbed = []
+        for route in self._ascendedRoutes:
+            if route[2] == 1:
+                alreadyClimbed.append(route)
+                continue
+            if route[3].get() == 1: # ascended
+                name = route[0]; style = route[1]
+                newlyClimbed.append([name, style])
+
+        routeManager.registerAscends(newlyClimbed)
+
     def _getCragUrl(self):
         index = self._resultList.curselection()
-        country = self._resultList.get(index)
-        url = self._cragInfo[country][1]
+        crag = self._resultList.get(index)
+        url = self._cragInfo[crag][1]
 
         return url
     def _getGradeSummary(self):
@@ -155,6 +195,8 @@ class trackerGUI:
 
     def _scrapeResults(self):
         country = self._countryVar.get()
+        if len(country.split()) != 1:
+            country = "-".join(country.split())
         self._cragInfo = self._scraper.getCragInfoForCountry(country)
 
     def _getResults(self):
@@ -166,8 +208,7 @@ class trackerGUI:
         allStyles = [sport, trad, boulder, dws]
         selectedStyles = [style for style in allStyles if style]
 
-        cleaner = ScrapeCleaner(self._cragInfo)
-        results = cleaner.getCrags(selectedStyles)
+        results = self._cleaner.getCrags(self._cragInfo, selectedStyles)
         cragNames = []
         for cragInfo in results:
             cragNames.append(cragInfo)
