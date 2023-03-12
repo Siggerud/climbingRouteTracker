@@ -163,14 +163,17 @@ class trackerGUI:
         alreadyClimbed = []
         newlyClimbed = []
         for route in self._ascendedRoutes:
-            if route[2] == 1:
-                alreadyClimbed.append(route)
-                continue
-            if route[3].get() == 1: # ascended
+            if route[2] == 1 and route[3].get() == 0:
                 name = route[0]; style = route[1]
-                newlyClimbed.append([name, style])
+                alreadyClimbed.append([name, style + "\n"])
+            elif route[2] == 0 and route[3].get() == 1: # ascended
+                name = route[0]; style = route[1]
+                newlyClimbed.append([name, style + "\n"])
 
         routeManager.registerAscends(newlyClimbed)
+        routeManager.deleteAscends(alreadyClimbed)
+
+        self._markAscendsWindow.destroy()
 
     def _getCragUrl(self):
         index = self._resultList.curselection()
