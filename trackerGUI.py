@@ -1,5 +1,5 @@
 from tkinter import Tk, ttk, StringVar, Checkbutton, Listbox, Variable, Frame, Label, \
-    Toplevel, Button, IntVar
+    Toplevel, Button, IntVar, Canvas
 from scraper import CragScraper
 from scrapeCleaner import ScrapeCleaner
 from savedRoutesManager import SavedRoutesManager
@@ -93,7 +93,6 @@ class trackerGUI:
     #TODO: lag scrollbar
     def _makePopup(self):
         self._markAscendsWindow = Toplevel(self._master)
-        self._markAscendsWindow.geometry("300x500")
         self._markAscendsWindow.title("Mark ascents")
 
         url = self._getCragUrl()
@@ -101,16 +100,32 @@ class trackerGUI:
 
         cragRoutesInfo = self._cleaner.sortCragRoutesInfo(cragRoutesInfoUnsorted)
 
-        nameTitleLabel = Label(self._markAscendsWindow, text="Route")
+        self._containerFrame = ttk.Frame(self._markAscendsWindow)
+
+        self._routeCanvas = Canvas(self._containerFrame)
+
+        routeSroll = ttk.Scrollbar(self._containerFrame, orient="vertical", command=self._routeCanvas.yview)
+
+        self._routeInfoFrame = Frame(self._routeCanvas)
+
+        self._routeInfoFrame.bind("<Configure>",
+                                  lambda e: self._routeCanvas.configure(
+                                      scrollregion=self._routeCanvas.bbox("all")
+                                  ))
+
+        self._routeCanvas.create_window((0,0), window=self._routeInfoFrame, anchor="nw")
+        self._routeCanvas.configure(yscrollcommand=routeSroll.set)
+
+        nameTitleLabel = Label(self._routeInfoFrame, text="Route")
         nameTitleLabel.grid(row=0, column=0, sticky="w")
 
-        gradeTitleLabel = Label(self._markAscendsWindow, text="Grade")
+        gradeTitleLabel = Label(self._routeInfoFrame, text="Grade")
         gradeTitleLabel.grid(row=0, column=1, sticky="w")
 
-        styleTitleLabel = Label(self._markAscendsWindow, text="Type")
+        styleTitleLabel = Label(self._routeInfoFrame, text="Type")
         styleTitleLabel.grid(row=0, column=2, sticky="w")
 
-        starsTitleLabel = Label(self._markAscendsWindow, text="Stars")
+        starsTitleLabel = Label(self._routeInfoFrame, text="Stars")
         starsTitleLabel.grid(row=0, column=3, sticky="w")
 
         country = self._countryVar.get()
@@ -121,16 +136,16 @@ class trackerGUI:
         self._ascendedRoutes = [] # reset list
         rowCount = 1
         for routeInfo in cragRoutesInfo:
-            gradeLabel = Label(self._markAscendsWindow, text=routeInfo[1])
+            gradeLabel = Label(self._routeInfoFrame, text=routeInfo[1])
             gradeLabel.grid(row=rowCount, column=1, sticky="w")
 
             style = routeInfo[2]
-            styleLabel = Label(self._markAscendsWindow, text=style)
+            styleLabel = Label(self._routeInfoFrame, text=style)
             styleLabel.grid(row=rowCount, column=2, sticky="w")
 
             nameVar = IntVar()
             name = routeInfo[0]
-            nameLabel = Checkbutton(self._markAscendsWindow, text=name, variable=nameVar, onvalue=1, offvalue=0)
+            nameLabel = Checkbutton(self._routeInfoFrame, text=name, variable=nameVar, onvalue=1, offvalue=0)
             nameLabel.grid(row=rowCount, column=0, sticky="w")
             ascendedValue = savedRoutesManager.checkIfRouteAscended(name, style)
 
@@ -147,13 +162,17 @@ class trackerGUI:
                 if stars[-1] == "0":
                     stars = stars[0]
 
-            starsLabel = Label(self._markAscendsWindow, text=stars)
+            starsLabel = Label(self._routeInfoFrame, text=stars)
             starsLabel.grid(row=rowCount, column=3, sticky="w")
 
             rowCount += 1
 
-        submitAscends = Button(self._markAscendsWindow, text="Submit", bg="magenta", command=self._registerAscends)
+        submitAscends = Button(self._routeInfoFrame, text="Submit", bg="magenta", command=self._registerAscends)
         submitAscends.grid(row=rowCount, column=1, sticky="w")
+
+        self._containerFrame.pack()
+        self._routeCanvas.pack(side="left", fill="both", expand=True)
+        routeSroll.pack(side="right", fill="y")
 
     def _registerAscends(self):
         country = self._countryVar.get()
