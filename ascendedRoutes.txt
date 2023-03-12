@@ -2,6 +2,8 @@ country_Section:,Norway
 crag_Section:,B�smoklippa
 Gaston,Boulder
 crag_Section:,Hauktjern
+Svake Mennesker,Sport
+Gammel jomfru,Sport
 Sara,Traditional
 country_Section:,Sweden
 crag_Section:,Atle Tor
