@@ -62,6 +62,7 @@ class CragScraper:
         countryTags = soup.find_all("a", class_="sector-item")
         for tag in countryTags:
             countries.append(tag.text.strip())
+
         return countries
 
     def _getLastPage(self, soup):

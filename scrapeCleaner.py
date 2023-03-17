@@ -8,6 +8,7 @@ class ScrapeCleaner:
         return cragRoutesInfo
 
     def getCrags(self, cragInfo, climbingStyles):
+        # return all crag info if no styles are selected
         if not climbingStyles:
             return cragInfo
 
@@ -21,6 +22,7 @@ class ScrapeCleaner:
                     break
                 if allStylesFound:
                     break
+                # check if selected climbing styles are found at crag
                 for style in climbingStyles:
                     if style in cragStyle:
                         styleCount += 1

@@ -1,0 +1,14 @@
+country_Section,Norway
+crag_Section,Aurekulpen
+Matrix,Trad
+Batman,Sport
+crag_Section,Hauktjern
+Alleen, Partially
+Tassen, Sport
+Mamma mia, Sport
+Ut mot havet, Traditional
+Ungdommens råskap, Sport
+country_Section,Germany
+crag_Section,Spielberg
+El Diente, Sport
+Musikantenstadl, Sport

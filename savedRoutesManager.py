@@ -1,40 +1,57 @@
+from os import path
+
 class SavedRoutesManager:
     def __init__(self, filename, country, crag):
         self._filename = filename
+        self._createFileIfNonExistent()
+        self._countryKey = "country_Section"
+        self._cragKey = "crag_Section"
         self._country = country
         self._crag = crag
         self._cragStart = 0 # index of first route on crag
         self._cragEnd = 0 # index of last route on crag
-        self._countryStart = 0
-        self._countryEnd = 0
+        self._countryStart = 0 # index of first entry under country
+        self._countryEnd = 0 # index of last entry under country
         self._countryRegistered = self._checkIfCountryRegistered()
         self._cragRegistered = self._checkIfCragRegistered()
 
-    def _addCountry(self):
-        file = open(self._filename, "r")
+    def get_all_lines(self):
+        file = open("ascendedRoutes.txt", "r")
         lines = file.readlines()
-        lines.append(f"country_Section:,{self._country}\n")
+        file.close()
+        print(lines)
+        return lines
+    def get_if_crag_registered(self):
+        return self._cragRegistered
+
+    def get_if_country_registered(self):
+        return self._countryRegistered
+
+    def _createFileIfNonExistent(self):
+        filename = self._filename
+        if not path.isfile(filename):
+            file = open(filename, "w+")
+            file.close()
+
+    def _addCountry(self):
+        file, lines = self._getFileAndLines()
+        lines.append(f"{self._countryKey},{self._country}\n")
         self._countryStart = len(lines)  # update countrystart
         file.close()
 
         self._writeLines(lines)
 
-    #TODO: find out why crag is not being added
     def _addCrag(self):
-        file = open(self._filename, "r")
-        lines = file.readlines()
-        lines.insert(self._countryStart, f"crag_Section:,{self._crag}\n")
+        file, lines = self._getFileAndLines()
+        lines.insert(self._countryStart, f"{self._cragKey},{self._crag}\n")
         self._cragStart = self._countryStart + 1
         file.close()
-        print(lines)
 
         self._writeLines(lines)
 
     def deleteAscends(self, routes):
-        print(routes)
-        file = open(self._filename, "r")
+        file, lines = self._getFileAndLines()
         linesToBeRemoved = []
-        lines = file.readlines()
         for index, line in enumerate(lines):
             if index < self._cragStart:
                 continue
@@ -45,20 +62,16 @@ class SavedRoutesManager:
                 if recordedRoute == route:
                     linesToBeRemoved.append(line)
                     routes.remove(route)
-        print(len(linesToBeRemoved))
-        print(self._cragStart, self._cragEnd)
         file.close()
 
         for line in linesToBeRemoved:
             lines.remove(line)
-        print(lines)
         numberOfDeletes = len(linesToBeRemoved)
         self._updateCragEnd(numberOfDeletes, delete=True)
         if self._cragEnd < self._cragStart: # no more routes registered on crag
             del lines[self._cragStart - 1] # deletes crag title line
             if self._countryEnd == self._countryStart - len(linesToBeRemoved): # no more routes registered on country
                 del lines[self._countryStart - 1] # deletes country title line
-        print(lines)
         self._writeLines(lines)
 
     def _updateCragEnd(self, numberOfRoutes, delete=False):
@@ -77,14 +90,11 @@ class SavedRoutesManager:
         elif not self._cragRegistered:
             self._addCrag()
 
-        file = open(self._filename, "r")
-        lines = file.readlines()
-        print(lines)
+        file, lines = self._getFileAndLines()
         for route in routes:
             routeName = route[0]; routeStyle = route[1]
             lines.insert(self._cragStart, routeName + "," + routeStyle)
         file.close()
-        print(lines)
         numberOfRegistrations = len(routes)
         self._updateCragEnd(numberOfRegistrations)
 
@@ -112,13 +122,18 @@ class SavedRoutesManager:
             return 1
         return 0
 
-    def _checkIfCountryRegistered(self):
+    def _getFileAndLines(self):
         file = open(self._filename, "r")
         lines = file.readlines()
+
+        return file, lines
+
+    def _checkIfCountryRegistered(self):
+        file, lines = self._getFileAndLines()
         countryFound = False
         for index, line in enumerate(lines):
             words = line.strip().split(",")
-            if words[0] == "country_Section:" and words[1].strip() == self._country:
+            if words[0] == self._countryKey and words[1].strip() == self._country:
                 self._countryStart = index + 1
                 countryFound = True
                 break
@@ -132,21 +147,20 @@ class SavedRoutesManager:
         if self._countryRegistered == False:
             return False
 
-        file = open(self._filename, "r")
-        lines = file.readlines()
+        file, lines = self._getFileAndLines()
 
         cragFound = False
         endOfFile = True
         nextCountryFound = False
         for index, line in enumerate(lines[self._countryStart:]):
             words = line.strip().split(",")
-            if words[0] == "crag_Section:" and words[1] == self._crag:
+            if words[0] == self._cragKey and words[1] == self._crag:
                 cragFound = True
-                cragStart = self._countryStart + index + 1
-            elif (words[0] == "crag_Section:" or words[0] == "country_Section:") and cragFound == True:
+                self._cragStart = self._countryStart + index + 1
+            elif (words[0] == self._cragKey or words[0] == self._countryKey) and cragFound == True:
                 cragEnd = self._countryStart + index - 1
                 endOfFile = False
-            elif words[0] == "country_Section:": # break if reading on a new country
+            elif words[0] == self._countryKey: # break if reading on a new country
                 nextCountryFound = True
                 break
 
@@ -158,7 +172,6 @@ class SavedRoutesManager:
         if cragFound == False:
             return False
 
-        self._cragStart = cragStart
         if not endOfFile:
             self._cragEnd = cragEnd
         else:
