@@ -4,16 +4,17 @@ from scraper import CragScraper
 from scrapeCleaner import ScrapeCleaner
 from savedRoutesManager import SavedRoutesManager
 
-# TODO: add activebackground on checkbuttons
-class trackerGUI:
+class TrackerGUI:
+    # creates a GUI for tracking climbed routes
     def __init__(self, master):
         self._master = master
-        self._master.geometry("300x400")
+        self._master.geometry("300x450")
         self._master.title("Climbing routes tracker")
 
         self._biggerSizeFont = ("Helvetica", 10)
         self._font = ("Helvetica", 9)
         self._padx = 5
+        comboWidth = 10
 
         self._cragInfo = []
         self._routesAtCrag = []
@@ -21,52 +22,58 @@ class trackerGUI:
         self._cleaner = ScrapeCleaner()
 
         self._continentVar = StringVar()
-        self._continent = ttk.Combobox(self._master, font=self._font, textvariable=self._continentVar, width=10)
+        self._continent = ttk.Combobox(self._master, font=self._font, textvariable=self._continentVar, width=comboWidth)
         self._continent.place(x=10, y=10)
-        self._setContinents()
-
-        self._continent.bind("<<ComboboxSelected>>", self._updateCountries)
+        # set the continents registered on 27crags
+        self._set_continents()
+        # update countries whenever a new continent is chosen
+        self._continent.bind("<<ComboboxSelected>>", self._update_countries)
 
         self._countryVar = StringVar()
-        self._country = ttk.Combobox(self._master, font=self._font, textvariable=self._countryVar, width=10)
+        self._country = ttk.Combobox(self._master, font=self._font, textvariable=self._countryVar, width=comboWidth)
         self._country.place(x=10, y=40)
-        self._setCountriesForContinent()
+        # set the countries for default continent
+        self._set_countries_for_continent()
+        # update crags whenever a new country is chosen
+        self._country.bind("<<ComboboxSelected>>", self._update_crags)
 
-        self._country.bind("<<ComboboxSelected>>", self._updateCrags)
-
+        # define checkboxes for type of climb
         self._styleSportVar = StringVar()
         self._styleSport = Checkbutton(self._master, text="Sport", font=self._font, variable=self._styleSportVar,
-                                       onvalue="sport", offvalue="", command=self._getResults)
+                                       onvalue="sport", offvalue="", command=self._get_results)
         self._styleSport.place(x=5, y=70)
 
         self._styleTradVar = StringVar()
         self._styleTrad = Checkbutton(self._master, text="Trad", font=self._font, variable=self._styleTradVar,
-                                       onvalue="trad", offvalue="", command=self._getResults)
+                                      onvalue="trad", offvalue="", command=self._get_results)
         self._styleTrad.place(x=65, y=70)
 
         self._styleBoulderVar = StringVar()
         self._styleBoulder = Checkbutton(self._master, text="Boulder", font=self._font, variable=self._styleBoulderVar,
-                                      onvalue="boulder", offvalue="", command=self._getResults)
+                                         onvalue="boulder", offvalue="", command=self._get_results)
         self._styleBoulder.place(x=125, y=70)
 
         self._styleDwsVar = StringVar()
         self._styleDws = Checkbutton(self._master, text="DWS", font=self._font, variable=self._styleDwsVar,
-                                      onvalue="DWS", offvalue="", command=self._getResults)
+                                     onvalue="DWS", offvalue="", command=self._get_results)
         self._styleDws.place(x=5, y=95)
 
+        # the list showing all crags
         self._resultVar = Variable()
         self._resultList = Listbox(self._master, font=self._font, listvariable=self._resultVar, height=15)
         self._resultList.place(x=5, y=125)
 
-        self._scrapeCragInfoForCountry()
-        self._getResults()
-
-        self._resultList.bind('<<ListboxSelect>>', self._showCragGradeInfo)
+        # get crags and related info for default country
+        self._scrape_crag_info_for_country()
+        self._get_results()
+        # show info on crag whenever a crag is clicked
+        self._resultList.bind('<<ListboxSelect>>', self._show_crag_gradeinfo)
 
         self._cragGradeInfoFrame = Frame(self._master)
         self._cragGradeInfoFrame.place(x=150, y=125)
 
-    def _showCragGradeInfo(self, event):
+    # shows info on grades for crag
+    def _show_crag_gradeinfo(self, event):
         # do nothing if nothing is selected
         if self._resultList.curselection() == ():
             return
@@ -81,8 +88,9 @@ class trackerGUI:
         cragNumberLabel = Label(self._cragGradeInfoFrame, text="Number", font=self._biggerSizeFont)
         cragNumberLabel.grid(row=0, column=1, sticky="w", padx=self._padx)
 
-        gradeSummary = self._getGradeSummary()
+        gradeSummary = self._get_grade_summary()
         rowCount = 1
+        # add all the grades found for crag
         for grade, number in gradeSummary.items():
             gradeLabel = Label(self._cragGradeInfoFrame, text=grade, font=self._font)
             gradeLabel.grid(row=rowCount, column=0, sticky="w", padx=self._padx)
@@ -92,17 +100,19 @@ class trackerGUI:
 
             rowCount += 1
 
-        markButton = Button(self._cragGradeInfoFrame, text="Mark ascents", font=self._font, bg="springgreen", command=self._makePopup)
+        markButton = Button(self._cragGradeInfoFrame, text="Mark ascents", font=self._font, bg="springgreen", command=self._make_popup)
         markButton.grid(row=rowCount, column=0, sticky="w", columnspan=2)
 
-    def _makePopup(self):
+    # creates a popup window when we want to register ascends
+    def _make_popup(self):
         self._markAscendsWindow = Toplevel(self._master)
         self._markAscendsWindow.title("Mark ascents")
-        self._markAscendsWindow.geometry("300x500")
+        self._markAscendsWindow.geometry("400x500")
 
-        url = self._getCragUrl()
-        cragRoutesInfoUnsorted = self._scraper.getCragRoutesInfo(url)
-        cragRoutesInfo = self._cleaner.sortCragRoutesInfo(cragRoutesInfoUnsorted)
+        # get info on each route on selected crag
+        url = self._get_crag_url()
+        cragRoutesInfoUnsorted = self._scraper.get_crag_routesinfo(url)
+        cragRoutesInfo = self._cleaner.sort_crag_routesinfo(cragRoutesInfoUnsorted)
 
         # frame to contain canvas and scrollable frame
         self._containerFrame = ttk.Frame(self._markAscendsWindow)
@@ -113,7 +123,7 @@ class trackerGUI:
         routeSroll = ttk.Scrollbar(self._containerFrame, orient="vertical", command=self._routeCanvas.yview)
 
         self._routeInfoFrame = Frame(self._routeCanvas)
-
+        # set up the scrollbar
         self._routeInfoFrame.bind("<Configure>",
                                   lambda e: self._routeCanvas.configure(
                                       scrollregion=self._routeCanvas.bbox("all")
@@ -122,6 +132,7 @@ class trackerGUI:
         self._routeCanvas.create_window((0,0), window=self._routeInfoFrame, anchor="nw")
         self._routeCanvas.configure(yscrollcommand=routeSroll.set)
 
+        # add title labels
         nameTitleLabel = Label(self._routeInfoFrame, text="Route", font=self._biggerSizeFont)
         nameTitleLabel.grid(row=0, column=0, sticky="w")
 
@@ -135,11 +146,12 @@ class trackerGUI:
         starsTitleLabel.grid(row=0, column=3, sticky="w", padx=self._padx)
 
         country = self._countryVar.get()
-        crag = self._getSelectedCrag()
+        crag = self._get_selected_crag()
         savedRoutesManager = SavedRoutesManager("ascendedRoutes.txt", country, crag)
 
         self._routesAtCrag = [] # reset list
         rowCount = 1
+        # add info on each route
         for routeInfo in cragRoutesInfo:
             gradeLabel = Label(self._routeInfoFrame, text=routeInfo[1], font=self._font)
             gradeLabel.grid(row=rowCount, column=1, sticky="w", padx=self._padx)
@@ -152,7 +164,12 @@ class trackerGUI:
             name = routeInfo[0]
             nameLabel = Checkbutton(self._routeInfoFrame, text=name, font=self._font, variable=nameVar, onvalue=1, offvalue=0)
             nameLabel.grid(row=rowCount, column=0, sticky="w")
-            ascendedValue = savedRoutesManager.checkIfRouteAscended(name, style)
+            # check if route is already climbed
+            ascended = savedRoutesManager.check_if_route_ascended(name, style)
+            if ascended:
+                ascendedValue = 1
+            else:
+                ascendedValue = 0
 
             if ascendedValue == 1:
                 # mark route as already climbed
@@ -175,16 +192,18 @@ class trackerGUI:
 
             rowCount += 1
 
-        submitAscends = Button(self._routeInfoFrame, text="Submit", font=self._font, bg="magenta", command=self._registerAscends)
-        submitAscends.grid(row=rowCount, column=1, sticky="w")
-
         self._containerFrame.pack()
         self._routeCanvas.pack(side="left", fill="both", expand=True)
         routeSroll.pack(side="right", fill="y")
 
-    def _registerAscends(self):
+        submitAscends = Button(self._markAscendsWindow, text="Submit", font=self._font, bg="magenta",
+                               command=self._register_ascends)
+        submitAscends.pack()
+
+    # registers ascended routes
+    def _register_ascends(self):
         country = self._countryVar.get()
-        crag = self._getSelectedCrag()
+        crag = self._get_selected_crag()
         routeManager = SavedRoutesManager("ascendedRoutes.txt", country, crag)
         alreadyClimbed = []
         newlyClimbed = []
@@ -198,46 +217,56 @@ class trackerGUI:
                 name = route[0]; style = route[1]
                 newlyClimbed.append([name, style + "\n"])
 
-        routeManager.registerAscends(newlyClimbed)
-        routeManager.deleteAscends(alreadyClimbed)
+        # registers any new ascends
+        routeManager.register_ascends(newlyClimbed)
+        # removes previous ascends
+        if alreadyClimbed:
+            routeManager.delete_ascends(alreadyClimbed)
 
         # close window when submitted
         self._markAscendsWindow.destroy()
 
-    def _getCragUrl(self):
-        crag = self._getSelectedCrag()
+    # get url for selected crag
+    def _get_crag_url(self):
+        crag = self._get_selected_crag()
         url = self._cragInfo[crag][1]
 
         return url
 
-    def _getSelectedCrag(self):
+    # get crag selected in listbox
+    def _get_selected_crag(self):
         index = self._resultList.curselection()
         crag = self._resultList.get(index)
 
         return crag
 
-    def _getGradeSummary(self):
-        url = self._getCragUrl()
-        gradeSummary = self._scraper.getGradeInfo(url)
+    # retrieves a summary of grades for crag
+    def _get_grade_summary(self):
+        url = self._get_crag_url()
+        gradeSummary = self._scraper.get_gradeinfo(url)
 
         return gradeSummary
 
-    def _updateCrags(self, event):
-        self._scrapeCragInfoForCountry()
-        self._getResults()
+    # gets info and updates the crags in the resultlist
+    def _update_crags(self, event):
+        self._scrape_crag_info_for_country()
+        self._get_results()
 
-    def _updateCountries(self, event):
-        self._setCountriesForContinent()
-        self._scrapeCragInfoForCountry()
-        self._getResults()
+    # updates the countries in combobox
+    def _update_countries(self, event):
+        self._set_countries_for_continent()
+        self._scrape_crag_info_for_country()
+        self._get_results()
 
-    def _scrapeCragInfoForCountry(self):
+    # gets info on crags for country selected
+    def _scrape_crag_info_for_country(self):
         country = self._countryVar.get()
         if len(country.split()) != 1:
             country = "-".join(country.split())
-        self._cragInfo = self._scraper.getCragInfoForCountry(country)
+        self._cragInfo = self._scraper.get_crag_info_for_country(country)
 
-    def _getResults(self):
+    # sets crags in listbox based on ticked checkboxes
+    def _get_results(self):
         sport = self._styleSportVar.get()
         trad = self._styleTradVar.get()
         boulder = self._styleBoulderVar.get()
@@ -246,22 +275,24 @@ class trackerGUI:
         allStyles = [sport, trad, boulder, dws]
         selectedStyles = [style for style in allStyles if style] # only get selected styles
 
-        results = self._cleaner.getCrags(self._cragInfo, selectedStyles)
+        results = self._cleaner.get_crags(self._cragInfo, selectedStyles)
         cragNames = []
         for crag in results:
             # skip crags with no known routes
             if self._cragInfo[crag][0]:
                 cragNames.append(crag)
-        cragNames.sort()
+        cragNames.sort() # sort crags alphabetically
         self._resultVar.set(cragNames)
 
-    def _setContinents(self):
+    # set continent combobox with continents registered on 27crags
+    def _set_continents(self):
         self._continent["values"] = ["Europe", "North America", "South America", "Africa", "Asia", "Oceania"]
         self._continent.current(0)
 
-    def _setCountriesForContinent(self):
-        continent = self._getContinent()
-        countries = self._getCountriesForContinent(continent)
+    # sets the countries for default continent at startup
+    def _set_countries_for_continent(self):
+        continent = self._get_continent()
+        countries = self._get_countries_for_continent(continent)
         self._country["values"] = countries
         if continent == "Europe":
             index = countries.index("Norway")
@@ -269,7 +300,8 @@ class trackerGUI:
             index = 0
         self._country.current(index)
 
-    def _getContinent(self):
+    # get selected continet in scraping friendly from
+    def _get_continent(self):
         continentRaw = self._continentVar.get()
         if len(continentRaw.split()) == 2:
             continent = "-".join(continentRaw.split())
@@ -278,11 +310,12 @@ class trackerGUI:
 
         return continent
 
-    def _getCountriesForContinent(self, continent):
-        countriesForContinent = self._scraper.getCountriesForContinent(continent)
+    # retrieves all countries registered for selected continent at 27crags
+    def _get_countries_for_continent(self, continent):
+        countriesForContinent = self._scraper.get_countries_for_continent(continent)
 
         return countriesForContinent
 
 master = Tk()
-GUI = trackerGUI(master)
+GUI = TrackerGUI(master)
 master.mainloop()

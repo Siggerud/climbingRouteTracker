@@ -1,16 +1,19 @@
 class ScrapeCleaner:
+    # cleans scraped data from 27crags
     def __init__(self):
         pass
 
-    def sortCragRoutesInfo(self, cragRoutesInfo):
+    # sorts crag info based on grade level
+    def sort_crag_routesinfo(self, cragRoutesInfo):
         cragRoutesInfo.sort(key = lambda x: x[1])
 
         return cragRoutesInfo
 
-    def getCrags(self, cragInfo, climbingStyles):
+    # get crags that fits criteria of selected climbing styles
+    def get_crags(self, cragInfo, climbingStyles):
         # return all crag info if no styles are selected
         if not climbingStyles:
-            return cragInfo
+            return list(cragInfo.keys())
 
         cragsThatFitCriteria = []
         numOfStyles = len(climbingStyles)
